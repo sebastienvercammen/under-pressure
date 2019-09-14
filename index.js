@@ -2,11 +2,13 @@
 
 const fp = require('fastify-plugin')
 const assert = require('assert')
+const eventLoopDelay = require('event-loop-delay')
 
 async function underPressure (fastify, opts) {
   opts = opts || {}
 
-  const sampleInterval = opts.sampleInterval || 5
+  // TODO: Deprecate opts.sampleInterval.
+  const memorySampleInterval = opts.memorySampleInterval || opts.sampleInterval || 5
   const maxEventLoopDelay = opts.maxEventLoopDelay || 0
   const maxHeapUsedBytes = opts.maxHeapUsedBytes || 0
   const maxRssBytes = opts.maxRssBytes || 0
@@ -19,9 +21,10 @@ async function underPressure (fastify, opts) {
 
   var heapUsed = 0
   var rssBytes = 0
-  var eventLoopDelay = 0
-  var lastCheck = now()
-  const timer = setInterval(updateMemoryUsage, sampleInterval)
+  var eventLoopDelayMs = 0
+  var eventLoopSampler = eventLoopDelay()
+  // TODO: Get rid of setInterval. It's not a good way to measure things during event loop delay.
+  const timer = setInterval(updateMemoryUsage, memorySampleInterval)
   timer.unref()
 
   var externalsHealthy = false
@@ -50,6 +53,7 @@ async function underPressure (fastify, opts) {
   }
 
   fastify.decorate('memoryUsage', memoryUsage)
+  fastify.decorate('eventLoopDelay', checkEventLoopDelay)
   fastify.addHook('onClose', onClose)
 
   if (opts.exposeStatusRoute) {
@@ -86,13 +90,12 @@ async function underPressure (fastify, opts) {
     var mem = process.memoryUsage()
     heapUsed = mem.heapUsed
     rssBytes = mem.rss
-    var toCheck = now()
-    eventLoopDelay = toCheck - lastCheck - sampleInterval
-    lastCheck = toCheck
   }
 
   function onRequest (req, reply, next) {
-    if (checkMaxEventLoopDelay && eventLoopDelay > maxEventLoopDelay) {
+    eventLoopDelayMs = eventLoopSampler.delay
+
+    if (checkMaxEventLoopDelay && eventLoopDelayMs > maxEventLoopDelay) {
       sendError(reply, next)
       return
     }
@@ -122,9 +125,17 @@ async function underPressure (fastify, opts) {
 
   function memoryUsage () {
     return {
-      eventLoopDelay,
       rssBytes,
       heapUsed
+    }
+  }
+
+  function checkEventLoopDelay () {
+    return {
+      'delay': eventLoopSampler.delay,
+      'accumulatedDelay': eventLoopSampler.accumulatedDelay,
+      'time': eventLoopSampler.time,
+      'count': eventLoopSampler.count
     }
   }
 

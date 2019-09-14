@@ -42,7 +42,7 @@ fastify.listen(3000, err => {
   console.log(`server listening on ${fastify.server.address().port}`)
 })
 ```
-`under-pressure` will automatically handle for you the `Service Unavailable` error once one of the thresholds has been reached.  
+`under-pressure` will automatically handle for you the `Service Unavailable` error once one of the thresholds has been reached.
 You can configure the error message and the `Retry-After` header.
 ```js
 fastify.register(require('under-pressure'), {
@@ -52,15 +52,21 @@ fastify.register(require('under-pressure'), {
 })
 ```
 
-The default value for `maxEventLoopDelay`, `maxHeapUsedBytes` and `maxRssBytes` is `0`.  
+The default value for `maxEventLoopDelay`, `maxHeapUsedBytes` and `maxRssBytes` is `0`.
 If the value is `0` the check will not be performed.
 
 Thanks to the encapsulation model of Fastify, you can selectively use this plugin in some subset of routes or even with different thresholds in different plugins.
 
 #### `memoryUsage`
-This plugin also exposes a function that will tell you the current values of `heapUsed`, `rssBytes` and `eventLoopDelay`.
+This plugin also exposes a function that will tell you the current values of `heapUsed` and `rssBytes`.
 ```js
 console.log(fastify.memoryUsage())
+```
+
+#### `eventLoopDelay`
+This plugin also exposes a function that will show you the current values of the event loop delay sampler.
+```js
+console.log(fastify.eventLoopDelay())
 ```
 
 #### Status route
@@ -96,7 +102,7 @@ fastify.register(require('under-pressure'), {
 <a name="acknowledgements"></a>
 ## Acknowledgements
 
-This project is kindly sponsored by [LetzDoIt](http://www.letzdoitapp.com/).  
+This project is kindly sponsored by [LetzDoIt](http://www.letzdoitapp.com/).
 
 <a name="license"></a>
 ## License
